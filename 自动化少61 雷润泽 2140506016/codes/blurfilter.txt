@@ -1,0 +1,20 @@
+function filter = blurfilter(h,w,a,b,T)
+    %h,w-滤波器高度和宽度(注:这里为频域，故输入应为原图像尺寸的两倍）
+    %z,b,T-滤波器参数
+    filter=zeros(h,w);
+    for i=0:h-1
+        for j=0:w-1
+            if (i-(h-1)/2)*a+(j-(w-1)/2)*b==0
+                filter(i+1,j+1)=T/pi;
+            else
+                filter(i+1,j+1)=T/(pi*((i-(h-1)/2)*a+(j-(w-1)/2)*b))*sin(pi*((i-(h-1)/2)*a+(j-(w-1)/2)*b))*exp(-complex(0,1)*pi*((i-(h-1)/2)*a+(j-(w-1)/2)*b));
+            end
+%             if abs(i-(h-1)/2)*a+abs(j-(w-1)/2)*b==0
+%                 filter(i+1,j+1)=T/pi;
+%             else
+%                 filter(i+1,j+1)=T/(pi*(abs(i-(h-1)/2)*a+abs(j-(w-1)/2)*b))*sin(pi*(abs(i-(h-1)/2)*a+abs(j-(w-1)/2)*b))*exp(-complex(0,1)*pi*(abs(i-(h-1)/2)*a+abs(j-(w-1)/2)*b));
+%             end
+        end
+    end
+end
+

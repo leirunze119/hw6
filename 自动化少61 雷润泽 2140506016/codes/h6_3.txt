@@ -1,0 +1,145 @@
+%模糊参数
+blura=0.015;
+blurb=-0.015;
+blurT=1;
+%高斯噪声参数
+noisemean=0;%噪声均值
+noisevar=0.01;%噪声方差
+%约束最小二乘滤波参数
+gammacls=0.5;
+
+%原始图像
+imgi=im2double(imread('lena.bmp'));
+h=size(imgi,1);
+w=size(imgi,2);
+%原始图像频谱
+imgtemp=zeros(2*h,2*w);
+for i=1:h
+    for j=1:w
+        imgtemp(i,j)=imgi(i,j)*power(-1,i+j);
+    end
+end
+imgif=fft2(imgtemp);
+%模糊滤波后的频谱
+blurf=blurfilter(2*h,2*w,blura,blurb,blurT);
+imgbf=imgif.*blurf;
+%模糊后的图像
+imgb=ifft2(imgbf);
+imgb=real(imgb(1:h,1:w));
+for i=1:h
+    for j=1:w
+        imgb(i,j)=imgb(i,j)*power(-1,i+j);
+    end
+end
+imwrite(imgb,'lena_blur.bmp');
+%添加高斯噪声
+imgn=imnoise(imgb,'gaussian',noisemean,noisevar);
+imwrite(imgn,'lena_blur_noise.bmp');
+%添加高斯噪声后的频谱
+imgtemp=zeros(2*h,2*w);
+for i=1:h
+    for j=1:w
+        imgtemp(i,j)=imgn(i,j)*power(-1,i+j);
+    end
+end
+imgnf=fft2(imgtemp);
+%噪声
+noise=imgn-imgb;
+%噪声频谱
+imgtemp=zeros(2*h,2*w);
+for i=1:h
+    for j=1:w
+        imgtemp(i,j)=noise(i,j)*power(-1,i+j);
+    end
+end
+noisef=fft2(imgtemp);
+
+
+%维纳滤波
+wienerfilter=zeros(2*h,2*w);
+imgwf=zeros(2*h,2*w);
+for i=1:2*h
+    for j=1:2*w
+        wienerfilter(i,j)=conj(blurf(i,j))/(power(abs(blurf(i,j)),2)+power(abs(noisef(i,j)),2)/power(abs(imgif(i,j)),2));
+        imgwf(i,j)=wienerfilter(i,j)*imgnf(i,j);
+    end
+end
+imgw=ifft2(imgwf);
+imgw=real(imgw(1:h,1:w));
+for i=1:h
+    for j=1:w
+        imgw(i,j)=imgw(i,j)*power(-1,i+j);
+    end
+end
+imwrite(imgw,'lena_wiener.bmp');
+
+%约束最小二乘滤波
+p=[0,-1,0;-1,4,-1;0,-1,0];
+imgtemp=zeros(2*h,2*w);
+for i=1:3
+    for j=1:3
+        imgtemp(i,j)=p(i,j)*power(-1,i+j);
+    end
+end
+pf=fft2(imgtemp);
+clsfilter=zeros(2*h,2*w);
+imgclsf=zeros(2*h,2*w);
+for i=1:2*h
+    for j=1:2*w
+        clsfilter(i,j)=conj(blurf(i,j))/(power(abs(blurf(i,j)),2)+power(abs(pf(i,j)),2).*gammacls);
+        imgclsf(i,j)=clsfilter(i,j)*imgnf(i,j);
+    end
+end
+imgcls=ifft2(imgclsf);
+imgcls=real(imgcls(1:h,1:w));
+for i=1:h
+    for j=1:w
+        imgcls(i,j)=imgcls(i,j)*power(-1,i+j);
+    end
+end
+imwrite(imgcls,'lena_constainedleastsquare.bmp');
+
+subplot(4,4,1);
+imshow(imgi);
+title('原始图像');
+subplot(4,4,2);
+imshow(abs(imgif)./max(abs(imgif),[],'all').*200);
+title('原始图像频谱');
+subplot(4,4,3);
+imshow(imgb);
+title('模糊后的图像');
+subplot(4,4,4);
+imshow(abs(imgbf)./max(abs(imgif),[],'all').*200);
+title('模糊后的图像频谱');
+subplot(4,4,5);
+imshow(imgn);
+title('加入噪声后的图像');
+subplot(4,4,6);
+imshow(abs(imgnf)./max(abs(imgif),[],'all').*200);
+title('加入噪声后的图像频谱');
+subplot(4,4,7);
+imshow(noise.*0.5+0.5);
+title('噪声');
+subplot(4,4,8);
+imshow(abs(noisef)./max(abs(noisef),[],'all').*10);
+title('噪声频谱');
+
+subplot(4,4,9);
+imshow(abs(wienerfilter)./max(abs(wienerfilter),[],'all').*200);
+title('维纳滤波器');
+subplot(4,4,10);
+imshow(imgw);
+title('维纳滤波后的图像');
+subplot(4,4,11);
+imshow(abs(imgwf)./max(abs(imgif),[],'all').*200);
+title('维纳滤波后的图像频谱');
+
+subplot(4,4,13);
+imshow(abs(clsfilter)./max(abs(clsfilter),[],'all').*200);
+title('约束最小二乘滤波器');
+subplot(4,4,14);
+imshow(imgcls);
+title('约束最小二乘滤波后的图像');
+subplot(4,4,15);
+imshow(abs(imgclsf)./max(abs(imgif),[],'all').*200);
+title('约束最小二乘滤波后的图像频谱');

@@ -1,0 +1,167 @@
+function imgo = recover(imgi,method,args)
+    h=size(imgi,1);
+    w=size(imgi,2);
+    imgo=zeros(h,w);
+    switch method
+        case 'arithmetic'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=mean(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                end
+            end
+        case 'geometric'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=geomean(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                end
+            end
+        case 'harmonic'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=harmmean(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                end
+            end
+        case 'contraharmonic'%args(1)-窗口尺寸,args(2)-Q
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    chmn=0;
+                    chmd=0;
+                    for k=0:args(1)-1
+                        for L=0:args(1)-1
+                            chmn=chmn+power(imge(i+k,j+L),args(2)+1);
+                            chmd=chmd+power(imge(i+k,j+L),args(2));
+                        end
+                    end
+                    imgo(i,j)=chmn/chmd;
+                end
+            end
+        case 'median'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=median(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                end
+            end
+        case 'max'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=max(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all');
+                end
+            end
+        case 'min'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=min(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all');
+                end
+            end
+        case 'midpoint'%args(1)-窗口尺寸
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=(max(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all')+min(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all'))/2;
+                end
+            end
+        case 'alphatrimmed'%args(1)-窗口尺寸,args(2)-d
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    vtemp=zeros(args(1)*args(1),1);
+                    for k=0:args(1)-1
+                        for L=0:args(1)-1
+                            vtemp(k*args(1)+L+1)=imge(i+k,j+L);
+                        end
+                    end
+                    imgo(i,j)=mean(vtemp(1+args(2)/2:args(1)*args(1)-args(2)/2),'all');
+                end
+            end
+        case 'adaptivelocal'%args(1)-窗口尺寸,args(2)-全局噪声方差
+            imge=expand(imgi,args(1));
+            for i=1:h
+                for j=1:w
+                    avg=mean(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                    var=power(std2(imge(i:i+args(1)-1,j:j+args(1)-1)),2);
+                    if var<args(2)
+                        var=args(2);
+                    end
+                    imgo(i,j)=imgi(i,j)-args(2)*(imgi(i,j)-avg)/var;
+                end
+            end
+        case 'adaptivemedian'%args(1)-起始窗口尺寸,args(2)-最大窗口尺寸
+            for i=1:h
+                for j=1:w
+                    sizev=args(1);
+                    while sizev<=args(2)
+                        imge=expand(imgi,sizev);
+                        medv=median(imge(i:i+args(1)-1,j:j+args(1)-1),'all');
+                        maxv=max(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all');
+                        minv=min(imge(i:i+args(1)-1,j:j+args(1)-1),[],'all');
+                        a1=medv-minv;
+                        a2=medv-maxv;
+                        if (a1>0)&&(a2<0)
+                            b1=imgi(i,j)-minv;
+                            b2=imgi(i,j)-maxv;
+                            if (b1>0)&&(b2<0)
+                                imgo(i,j)=imgi(i,j);
+                            else
+                                imgo(i,j)=medv;
+                            end
+                            sizev=args(2);
+                        end
+                        sizev=sizev+2;
+                    end
+                end
+            end
+        case 'lowpass'%butterworth--args(1)-截止频率,args(2)-阶次
+            imgtemp=zeros(2*h,2*w);
+            for i=1:h
+                for j=1:w
+                    imgtemp(i,j)=imgi(i,j)*power(-1,i+j);
+                end
+            end
+            imgfi=fft2(imgtemp);
+            filter=butterworthf(2*h,2*w,'lowpass',args(1),args(2));
+            imgfo=imgfi.*filter;
+            imgo=ifft2(imgfo);
+            imgo=real(imgo(1:h,1:w));
+            imgo=real(imgo);
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=imgo(i,j)*power(-1,i+j);
+                end
+            end
+        case 'bandreject'%butterworth--args(1)-下限截止频率,args(2)-上限截止频率,args(3)-阶次
+            imgtemp=zeros(2*h,2*w);
+            for i=1:h
+                for j=1:w
+                    imgtemp(i,j)=imgi(i,j)*power(-1,i+j);
+                end
+            end
+            imgfi=fft2(imgtemp);
+            filter=butterworthbandreject(2*h,2*w,args(1),args(2),args(3));
+            imgfo=imgfi.*filter;
+            imgo=ifft2(imgfo);
+            imgo=real(imgo(1:h,1:w));
+            imgo=real(imgo);
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=imgo(i,j)*power(-1,i+j);
+                end
+            end
+        case 'notch'%args-噪声
+            sizev=31;
+            imge=expand(imgi,sizev);
+            noisee=expand(args,sizev);
+            for i=1:h
+                for j=1:w
+                    imgo(i,j)=imgi(i,j)-(mean(imge(i:i+sizev-1,j:j+sizev-1).*noisee(i:i+sizev-1,j:j+sizev-1),'all')-mean(imge(i:i+sizev-1,j:j+sizev-1),'all')*mean(noisee(i:i+sizev-1,j:j+sizev-1),'all'))/(mean(power(noisee(i:i+sizev-1,j:j+sizev-1),2),'all')-power(mean(noisee(i:i+sizev-1,j:j+sizev-1),'all'),2))*args(i,j);
+                end
+            end
+    end
+end
+

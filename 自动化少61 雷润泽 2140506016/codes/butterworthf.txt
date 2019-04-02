@@ -1,0 +1,21 @@
+function filter = butterworthf(size1,size2,pass,d0,order)
+    %生成butterworth滤波器
+    %size1-滤波器高度(这里应为图像大小的两倍）
+    %size2-滤波器宽度（同上）
+    %pass-低通/高通
+    %d0-截止频率
+    %order-滤波器阶次
+    filter=zeros(size1,size2);
+    for i=1:size1
+        for j=1:size2
+            ds=power((1+size1)/2-i,2)+power((1+size2)/2-j,2);
+            switch pass
+                case 'lowpass'
+                    filter(i,j)=1/(1+power(ds/(d0*d0),order));
+                case 'highpass'
+                    filter(i,j)=1/(1+power((d0*d0)/ds,order));
+            end
+        end
+    end
+end
+
